@@ -72,7 +72,9 @@ def cloud_mask(
     Method names are resolved from the cloud registry.
     """
 
-    selected_method = _resolve_cloud_method(scene, method=method, qa_band=qa_band, probability=probability)
+    selected_method = _resolve_cloud_method(
+        scene, method=method, qa_band=qa_band, probability=probability
+    )
     processor = _CLOUD_REGISTRY.get(selected_method)
     if processor is None:
         raise ValueError(f"Unknown cloud-masking method '{selected_method}'.")
@@ -141,7 +143,13 @@ def _resolve_cloud_method(
     return "user_mask"
 
 
-def _hedley_glint(scene: Scene, *, nir_band: str = "nir", visible_bands: list[str] | None = None, **_: Any) -> Scene:
+def _hedley_glint(
+    scene: Scene,
+    *,
+    nir_band: str = "nir",
+    visible_bands: list[str] | None = None,
+    **_: Any,
+) -> Scene:
     if not isinstance(scene.data, dict):
         raise TypeError("Hedley glint removal expects mapping-based scene data.")
     visible = visible_bands or [band for band in scene.bands if band != nir_band]
@@ -155,9 +163,9 @@ def _hedley_glint(scene: Scene, *, nir_band: str = "nir", visible_bands: list[st
         updated_data[band] = _map_binary(
             target,
             nir,
-            lambda v, n: max(0.0, v - slope * (n - nir_min)),
+            lambda v, n, slope=slope: max(0.0, v - slope * (n - nir_min)),
         )
-    return scene.add_history(f"glint removal ({'hedley'})").__class__(
+    return Scene(
         data=updated_data,
         crs=scene.crs,
         transform=scene.transform,
@@ -165,7 +173,7 @@ def _hedley_glint(scene: Scene, *, nir_band: str = "nir", visible_bands: list[st
         band_names=scene.band_names,
         acquisition_time=scene.acquisition_time,
         sensor=scene.sensor,
-        history=scene.add_history("remove_glint:hedley").history,
+        history=(*scene.history, "remove_glint:hedley"),
         masks=dict(scene.masks),
         cloud_mask=scene.cloud_mask,
         cloud_probability=scene.cloud_probability,
@@ -189,7 +197,9 @@ def _lyzenga_depth(
             continue
         corrected = _map_unary(values, lambda value: -math.log(max(value, epsilon)))
         if depth is not None:
-            corrected = _map_binary(corrected, depth, lambda value, depth_value: value / max(depth_value, epsilon))
+            corrected = _map_binary(
+                corrected, depth, lambda value, depth_value: value / max(depth_value, epsilon)
+            )
         updated[band] = corrected
     metadata = dict(scene.metadata)
     metadata["depth_method"] = f"lyzenga_{variant}"
@@ -260,7 +270,9 @@ def _maritorena_depth(
         raise ValueError("Maritorena correction requires `depth`.")
     updated = {}
     for band, values in scene.data.items():
-        updated[band] = _map_binary(values, depth, lambda value, d: value * math.exp(attenuation * d))
+        updated[band] = _map_binary(
+            values, depth, lambda value, d: value * math.exp(attenuation * d)
+        )
     metadata = dict(scene.metadata)
     metadata["depth_method"] = "maritorena"
     return Scene(
@@ -281,7 +293,9 @@ def _maritorena_depth(
 def _sentinel2_qa60_cloud(scene: Scene, *, qa_band: str | None = None, **kwargs: Any) -> Scene:
     band_name = qa_band or "qa60"
     qa_values = _resolve_data_band(scene, band_name)
-    mask = _map_unary(qa_values, lambda value: bool(int(value) & (1 << 10) or int(value) & (1 << 11)))
+    mask = _map_unary(
+        qa_values, lambda value: bool(int(value) & (1 << 10) or int(value) & (1 << 11))
+    )
     return _update_cloud(scene, mask=mask, probability=kwargs.get("probability"))
 
 
@@ -371,7 +385,10 @@ def _map_unary(values: Any, func) -> Any:
 
 def _map_binary(left: Any, right: Any, func) -> Any:
     if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
-        return [_map_binary(left_value, right_value, func) for left_value, right_value in zip(left, right, strict=True)]
+        return [
+            _map_binary(left_value, right_value, func)
+            for left_value, right_value in zip(left, right, strict=True)
+        ]
     return func(float(left), float(right))
 
 
@@ -393,7 +410,8 @@ def _linear_slope(x_values: list[float], y_values: list[float]) -> float:
         raise ValueError("Input arrays must have the same size.")
     mean_x = sum(x_values) / len(x_values)
     mean_y = sum(y_values) / len(y_values)
-    numerator = sum((x_val - mean_x) * (y_val - mean_y) for x_val, y_val in zip(x_values, y_values, strict=True))
+    pairs = zip(x_values, y_values, strict=True)
+    numerator = sum((x_val - mean_x) * (y_val - mean_y) for x_val, y_val in pairs)
     denominator = sum((x_val - mean_x) ** 2 for x_val in x_values)
     if denominator == 0:
         return 0.0
