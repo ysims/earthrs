@@ -47,13 +47,13 @@ class Scene:
     cloud_probability: Any | None = None
 
     def __post_init__(self) -> None:
-        mask_dict, cloud_mask, cloud_probability = normalise_cloud_schema(
+        mask_dict, metadata_dict, cloud_mask, cloud_probability = normalise_cloud_schema(
             metadata=self.metadata,
             masks=self.masks,
             cloud_mask=self.cloud_mask,
             cloud_probability=self.cloud_probability,
         )
-        object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
+        object.__setattr__(self, "metadata", MappingProxyType(metadata_dict))
         object.__setattr__(self, "band_names", tuple(self.band_names))
         object.__setattr__(self, "history", tuple(self.history))
         object.__setattr__(self, "masks", MappingProxyType(mask_dict))

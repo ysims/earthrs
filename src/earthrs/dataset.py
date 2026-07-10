@@ -7,9 +7,9 @@ from datetime import datetime
 from math import isfinite
 from typing import Any
 
-from earthrs.scene import Scene
-from earthrs.sampling import sample_points
 from earthrs.samples import Samples
+from earthrs.sampling import sample_points
+from earthrs.scene import Scene
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +31,7 @@ class Dataset:
 
         return len(self.scenes)
 
-    def add_scene(self, scene: Scene) -> None:
+    def add_scene(self, scene: Scene) -> Dataset:
         """Add a scene to the dataset."""
 
         return Dataset((*self.scenes, scene))
@@ -96,7 +96,8 @@ def _resolve_cloud_fraction(scene: Scene) -> float | None:
     if cloud_fraction is None:
         cloud_cover = scene.metadata.get("cloud_cover")
         if cloud_cover is not None:
-            cloud_fraction = float(cloud_cover) / 100 if float(cloud_cover) > 1 else float(cloud_cover)
+            cloud_cover = float(cloud_cover)
+            cloud_fraction = cloud_cover / 100 if cloud_cover > 1 else cloud_cover
     if cloud_fraction is not None:
         value = float(cloud_fraction)
         if value > 1:
