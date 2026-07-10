@@ -1,0 +1,9 @@
+site_name: AquaticRS
+site_description: Aquatic and coastal remote sensing library scaffold
+site_url: https://github.com/ysims/aquaticrs
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
