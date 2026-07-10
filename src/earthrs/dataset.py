@@ -5,12 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from aquaticrs.scene import Scene
+from earthrs.scene import Scene
 
 
 @dataclass(slots=True)
 class Dataset:
-    """Represent a collection of :class:`aquaticrs.scene.Scene` objects."""
+    """Represent a collection of :class:`earthrs.scene.Scene` objects."""
 
     scenes: list[Scene] = field(default_factory=list)
 
@@ -48,7 +48,7 @@ class Dataset:
     def sample_points(self, points) -> object:
         """Sample all scenes at point locations.
 
-        TODO: Delegate to `aquaticrs.sampling.sample_points` once implemented.
+        TODO: Delegate to `earthrs.sampling.sample_points` once implemented.
         """
 
         raise NotImplementedError("TODO: implement dataset point sampling")

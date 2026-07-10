@@ -1,6 +1,7 @@
-# aquaticrs
+# EarthRS
 
-AquaticRS is an early-stage Python library for aquatic and coastal Earth observation.
+EarthRS is an early-stage Python library for Earth observation, including aquatic and coastal
+remote sensing workflows.
 
 ## Vision
 

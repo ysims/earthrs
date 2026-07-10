@@ -3,14 +3,14 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aquaticrs"
+name = "earthrs"
 version = "0.1.0"
-description = "Aquatic and coastal remote sensing utilities built on the Python geospatial ecosystem."
+description = "Earth observation utilities built on the Python geospatial ecosystem."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
-  { name = "AquaticRS contributors" }
+  { name = "EarthRS contributors" }
 ]
 keywords = ["remote-sensing", "earth-observation", "raster", "geospatial", "aquatic"]
 classifiers = [
@@ -36,8 +36,8 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ysims/aquaticrs"
-Repository = "https://github.com/ysims/aquaticrs"
+Homepage = "https://github.com/ysims/earthrs"
+Repository = "https://github.com/ysims/earthrs"
 
 [tool.pytest.ini_options]
 addopts = "-ra"

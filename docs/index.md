@@ -1,7 +1,7 @@
-# AquaticRS
+# EarthRS
 
-AquaticRS provides a consistent set of Earth observation abstractions focused on aquatic and
-coastal remote sensing.
+EarthRS provides a consistent set of Earth observation abstractions, including aquatic and
+coastal remote sensing use cases.
 
 ## Principles
 
@@ -13,10 +13,10 @@ coastal remote sensing.
 
 ## Scaffold modules
 
-- `aquaticrs.scene.Scene`
-- `aquaticrs.dataset.Dataset`
-- `aquaticrs.indices`
-- `aquaticrs.sensors`
-- `aquaticrs.processing`
-- `aquaticrs.sampling`
-- `aquaticrs.ml`
+- `earthrs.scene.Scene`
+- `earthrs.dataset.Dataset`
+- `earthrs.indices`
+- `earthrs.sensors`
+- `earthrs.processing`
+- `earthrs.sampling`
+- `earthrs.ml`

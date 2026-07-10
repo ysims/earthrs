@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aquaticrs.scene import Scene
+from earthrs.scene import Scene
 
 
 def ndvi(scene: Scene, *, nir_band: str = "nir", red_band: str = "red") -> Any:

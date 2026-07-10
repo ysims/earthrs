@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from aquaticrs.scene import Scene
+from earthrs.scene import Scene
 
 
 def test_scene_exposes_inspection_fields() -> None:

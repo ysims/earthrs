@@ -35,6 +35,15 @@ def to_torch_dataset(features: Any, labels: Any | None = None) -> Any:
     raise NotImplementedError("TODO: implement torch dataset conversion")
 
 
+def to_tensorflow_dataset(features: Any, labels: Any | None = None) -> Any:
+    """Convert feature data to a TensorFlow-compatible dataset.
+
+    TODO: Keep TensorFlow dependency optional through adapter layers.
+    """
+
+    raise NotImplementedError("TODO: implement TensorFlow dataset conversion")
+
+
 def tile_scene(scene: Any, *, tile_size: int, stride: int | None = None) -> Any:
     """Create model-friendly tiles from scene-like data.
 

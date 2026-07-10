@@ -1,6 +1,6 @@
 """Preprocessing operation placeholders."""
 
-from aquaticrs.processing.core import (
+from earthrs.processing.core import (
     atmospheric_correction,
     cloud_mask,
     depth_correct,
