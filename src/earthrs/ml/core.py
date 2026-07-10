@@ -1,6 +1,6 @@
 """Placeholder machine-learning utility functions.
 
-These helpers should bridge remote-sensing data abstractions with general ML frameworks.
+These helpers bridge remote-sensing data abstractions with general ML frameworks.
 """
 
 from __future__ import annotations
