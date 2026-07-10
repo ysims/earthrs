@@ -1,0 +1,9 @@
+site_name: EarthRS
+site_description: Earth observation library scaffold with aquatic and coastal support
+site_url: https://github.com/ysims/earthrs
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
