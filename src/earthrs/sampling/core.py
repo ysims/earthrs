@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from earthrs.scene import Scene
 from earthrs.samples import Samples
+from earthrs.scene import Scene
 
 
 def sample_points(scene: Scene, points: Any, *, method: str = "nearest") -> Samples:
@@ -27,7 +27,9 @@ def sample_points(scene: Scene, points: Any, *, method: str = "nearest") -> Samp
             band_data = _get_band(scene, band_name)
             row[band_name] = _read_cell(band_data, point["row"], point["col"])
         rows.append(row)
-    return Samples(rows=tuple(rows), metadata={"sampling_method": method, "sampling_target": "points"})
+    return Samples(
+        rows=tuple(rows), metadata={"sampling_method": method, "sampling_target": "points"}
+    )
 
 
 def sample_polygons(scene: Scene, polygons: Any, *, reducer: str = "mean") -> Samples:
@@ -43,10 +45,14 @@ def sample_polygons(scene: Scene, polygons: Any, *, reducer: str = "mean") -> Sa
         row: dict[str, Any] = {"observation_id": index}
         for band_name in scene.bands:
             band_data = _get_band(scene, band_name)
-            pixels = [_read_cell(band_data, row_col[0], row_col[1]) for row_col in polygon["pixels"]]
+            pixels = [
+                _read_cell(band_data, row_col[0], row_col[1]) for row_col in polygon["pixels"]
+            ]
             row[band_name] = _reduce_values(pixels, reducer)
         rows.append(row)
-    return Samples(rows=tuple(rows), metadata={"sampling_method": reducer, "sampling_target": "polygons"})
+    return Samples(
+        rows=tuple(rows), metadata={"sampling_method": reducer, "sampling_target": "polygons"}
+    )
 
 
 def sample_transects(scene: Scene, transects: Any, *, spacing: float | None = None) -> Samples:
@@ -153,7 +159,10 @@ def _coerce_polygons(polygons: Any) -> list[dict[str, list[tuple[int, int]]]]:
         polygons = [polygons]
     out = []
     for polygon in polygons:
-        pixels = polygon.get("pixels") if isinstance(polygon, dict) else getattr(polygon, "pixels", None)
+        if isinstance(polygon, dict):
+            pixels = polygon.get("pixels")
+        else:
+            pixels = getattr(polygon, "pixels", None)
         if pixels is None:
             raise ValueError("Polygon entries must include a `pixels` sequence.")
         out.append({"pixels": [(int(row), int(col)) for row, col in pixels]})
@@ -167,7 +176,10 @@ def _coerce_transects(transects: Any) -> list[dict[str, list[tuple[int, int]]]]:
         transects = [transects]
     out = []
     for transect in transects:
-        vertices = transect.get("vertices") if isinstance(transect, dict) else getattr(transect, "vertices", None)
+        if isinstance(transect, dict):
+            vertices = transect.get("vertices")
+        else:
+            vertices = getattr(transect, "vertices", None)
         if vertices is None:
             raise ValueError("Transect entries must include a `vertices` sequence.")
         out.append({"vertices": [(int(row), int(col)) for row, col in vertices]})

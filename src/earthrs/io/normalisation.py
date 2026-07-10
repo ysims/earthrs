@@ -11,8 +11,14 @@ def normalise_cloud_schema(
     masks: dict[str, Any] | None = None,
     cloud_mask: Any | None = None,
     cloud_probability: Any | None = None,
-) -> tuple[dict[str, Any], Any | None, Any | None]:
-    """Normalise cloud fields into a consistent internal schema."""
+) -> tuple[dict[str, Any], dict[str, Any], Any | None, Any | None]:
+    """Normalise cloud fields into a consistent internal schema.
+
+    Returns a ``(masks, metadata, cloud_mask, cloud_probability)`` tuple. Cloud
+    fields sourced from ``masks`` are backfilled into ``metadata`` (and vice versa)
+    so downstream algorithms can rely on a single normalised schema regardless of
+    which dictionary a product's importer originally populated.
+    """
 
     metadata_dict = dict(metadata or {})
     mask_dict = dict(masks or {})
@@ -48,4 +54,4 @@ def normalise_cloud_schema(
         mask_dict["cloud_probability"] = resolved_cloud_probability
         metadata_dict.setdefault("cloud_probability", resolved_cloud_probability)
 
-    return mask_dict, resolved_cloud_mask, resolved_cloud_probability
+    return mask_dict, metadata_dict, resolved_cloud_mask, resolved_cloud_probability

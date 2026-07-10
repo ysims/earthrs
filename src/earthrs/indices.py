@@ -68,7 +68,9 @@ def _get_band(scene: Scene, band_name: str) -> Any:
         if band_name not in scene.data:
             raise ValueError(f"Band '{band_name}' not found in scene data.")
         return scene.data[band_name]
-    raise TypeError("Index calculations currently expect scene data as a mapping of band names to arrays.")
+    raise TypeError(
+        "Index calculations currently expect scene data as a mapping of band names to arrays."
+    )
 
 
 def _safe_div(numerator: float, denominator: float) -> float:
@@ -79,14 +81,20 @@ def _safe_div(numerator: float, denominator: float) -> float:
 
 def _map_binary(left: Any, right: Any, func) -> Any:
     if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
-        return [_map_binary(l_value, r_value, func) for l_value, r_value in zip(left, right, strict=True)]
+        pairs = zip(left, right, strict=True)
+        return [_map_binary(l_value, r_value, func) for l_value, r_value in pairs]
     if left is None or right is None:
         return float("nan")
     return _normalise_nan(func(float(left), float(right)))
 
 
 def _map_ternary(first: Any, second: Any, third: Any, func) -> Any:
-    if isinstance(first, (list, tuple)) and isinstance(second, (list, tuple)) and isinstance(third, (list, tuple)):
+    is_sequence = (
+        isinstance(first, (list, tuple))
+        and isinstance(second, (list, tuple))
+        and isinstance(third, (list, tuple))
+    )
+    if is_sequence:
         return [
             _map_ternary(first_value, second_value, third_value, func)
             for first_value, second_value, third_value in zip(first, second, third, strict=True)

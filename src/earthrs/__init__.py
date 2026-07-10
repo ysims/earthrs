@@ -5,6 +5,7 @@ aquatic and coastal remote sensing workflows.
 """
 
 from earthrs.dataset import Dataset
+from earthrs.samples import Samples
 from earthrs.scene import Scene
 
-__all__ = ["Dataset", "Scene"]
+__all__ = ["Dataset", "Samples", "Scene"]
