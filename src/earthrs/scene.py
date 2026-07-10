@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
+from types import MappingProxyType
 from typing import Any
 
+from earthrs.io import normalise_cloud_schema
 
-@dataclass(slots=True)
+
+@dataclass(frozen=True, slots=True)
 class Scene:
     """Represent a single Earth observation raster scene.
 
@@ -35,18 +38,35 @@ class Scene:
     crs: Any | None = None
     transform: Any | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    band_names: list[str] = field(default_factory=list)
+    band_names: tuple[str, ...] = ()
     acquisition_time: datetime | None = None
     sensor: str | None = None
-    history: list[str] = field(default_factory=list)
+    history: tuple[str, ...] = ()
+    masks: dict[str, Any] = field(default_factory=dict)
+    cloud_mask: Any | None = None
+    cloud_probability: Any | None = None
+
+    def __post_init__(self) -> None:
+        mask_dict, cloud_mask, cloud_probability = normalise_cloud_schema(
+            metadata=self.metadata,
+            masks=self.masks,
+            cloud_mask=self.cloud_mask,
+            cloud_probability=self.cloud_probability,
+        )
+        object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
+        object.__setattr__(self, "band_names", tuple(self.band_names))
+        object.__setattr__(self, "history", tuple(self.history))
+        object.__setattr__(self, "masks", MappingProxyType(mask_dict))
+        object.__setattr__(self, "cloud_mask", cloud_mask)
+        object.__setattr__(self, "cloud_probability", cloud_probability)
 
     @property
     def bands(self) -> tuple[str, ...]:
         """Return scene band names as an immutable tuple for inspection."""
 
-        return tuple(self.band_names)
+        return self.band_names
 
-    def add_history(self, entry: str) -> None:
+    def add_history(self, entry: str) -> Scene:
         """Append a processing-history entry.
 
         Parameters
@@ -55,7 +75,7 @@ class Scene:
             Human-readable description of a processing step.
         """
 
-        self.history.append(entry)
+        return replace(self, history=(*self.history, entry))
 
     def summary(self) -> str:
         """Return a compact human-readable description of the scene."""
