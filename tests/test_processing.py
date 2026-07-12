@@ -51,31 +51,94 @@ def test_hedley_glint_removal_requires_mapping_data() -> None:
         remove_glint(scene, method="hedley")
 
 
-def test_lyzenga_depth_correction_default_variant() -> None:
+def test_lyzenga_1978_log_linearises_each_band() -> None:
     scene = Scene(data={"blue": [0.1], "qa60": [1]}, band_names=["blue", "qa60"])
 
-    result = depth_correct(scene, method="lyzenga")
+    result = depth_correct(scene, method="lyzenga", variant="1978")
 
-    assert result.data["blue"] == pytest.approx([-math.log(0.1)])
+    assert result.data["blue"] == pytest.approx([math.log(0.1)])
     assert result.data["qa60"] == [1]
+    assert result.metadata["depth_method"] == "lyzenga_1978"
+    assert result.history == ("depth_correct:lyzenga:1978",)
+
+
+def test_lyzenga_1978_subtracts_deep_water_radiance() -> None:
+    scene = Scene(data={"blue": [0.5]}, band_names=["blue"])
+
+    result = depth_correct(
+        scene, method="lyzenga", variant="1978", deep_water_radiance={"blue": 0.2}
+    )
+
+    assert result.data["blue"] == pytest.approx([math.log(0.3)])
+
+
+def test_lyzenga_1981_computes_depth_invariant_index_by_default() -> None:
+    scene = Scene(
+        data={"blue": [math.e], "green": [math.e**2]},
+        band_names=["blue", "green"],
+    )
+
+    result = depth_correct(scene, method="lyzenga", k_i=3.0, k_j=4.0)
+
+    assert result.data["lyzenga_dii"] == pytest.approx([-0.4])
+    assert "lyzenga_dii" in result.band_names
     assert result.metadata["depth_method"] == "lyzenga_1981"
     assert result.history == ("depth_correct:lyzenga:1981",)
 
 
-def test_lyzenga_depth_correction_records_requested_variant() -> None:
-    scene = Scene(data={"blue": [0.1]}, band_names=["blue"])
+def test_lyzenga_1981_requires_attenuation_coefficients() -> None:
+    scene = Scene(data={"blue": [0.1], "green": [0.2]}, band_names=["blue", "green"])
 
-    result = depth_correct(scene, method="lyzenga", variant="2006")
+    with pytest.raises(ValueError):
+        depth_correct(scene, method="lyzenga")
 
+
+def test_lyzenga_1981_rejects_both_attenuation_coefficients_zero() -> None:
+    scene = Scene(data={"blue": [0.1], "green": [0.2]}, band_names=["blue", "green"])
+
+    with pytest.raises(ValueError):
+        depth_correct(scene, method="lyzenga", k_i=0.0, k_j=0.0)
+
+
+def test_lyzenga_2006_computes_depth_regression() -> None:
+    scene = Scene(
+        data={"blue": [math.e], "green": [math.e**2]},
+        band_names=["blue", "green"],
+    )
+
+    result = depth_correct(
+        scene,
+        method="lyzenga",
+        variant="2006",
+        coefficients={"blue": 1.0, "green": 0.5},
+        intercept=10.0,
+    )
+
+    assert result.data["lyzenga_depth"] == pytest.approx([8.0])
+    assert "lyzenga_depth" in result.band_names
     assert result.metadata["depth_method"] == "lyzenga_2006"
+    assert result.history == ("depth_correct:lyzenga:2006",)
 
 
-def test_lyzenga_depth_correction_divides_by_depth_when_given() -> None:
+def test_lyzenga_2006_requires_coefficients() -> None:
+    scene = Scene(data={"blue": [0.1], "green": [0.2]}, band_names=["blue", "green"])
+
+    with pytest.raises(ValueError):
+        depth_correct(scene, method="lyzenga", variant="2006")
+
+
+def test_lyzenga_2006_requires_at_least_one_band() -> None:
+    scene = Scene(data={"blue": [0.1], "green": [0.2]}, band_names=["blue", "green"])
+
+    with pytest.raises(ValueError):
+        depth_correct(scene, method="lyzenga", variant="2006", bands=(), coefficients={})
+
+
+def test_lyzenga_rejects_unknown_variant() -> None:
     scene = Scene(data={"blue": [0.1]}, band_names=["blue"])
 
-    result = depth_correct(scene, method="lyzenga", depth=[2.0])
-
-    assert result.data["blue"] == pytest.approx([-math.log(0.1) / 2.0])
+    with pytest.raises(ValueError):
+        depth_correct(scene, method="lyzenga", variant="1999")
 
 
 def test_stumpf_depth_correction_adds_derived_band() -> None:
