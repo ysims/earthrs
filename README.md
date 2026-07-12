@@ -57,7 +57,7 @@ def my_glint_method(scene, **kwargs):
 register_glint_method("my_method", my_glint_method)
 ```
 
-Implemented methods today:
+Implemented methods:
 
 - **Glint removal**: `"hedley"` (Hedley et al., 2005).
 - **Depth correction**: `"lyzenga"` (Lyzenga-style log transform; the `variant`
