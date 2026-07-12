@@ -2,7 +2,14 @@ import math
 
 import pytest
 
-from earthrs.processing import atmospheric_correction, cloud_mask, depth_correct, remove_glint
+from earthrs.processing import (
+    atmospheric_correction,
+    cloud_mask,
+    depth_correct,
+    register,
+    remove_glint,
+    reproject,
+)
 from earthrs.scene import Scene
 
 
@@ -221,3 +228,147 @@ def test_cloud_mask_explicit_method_overrides_sensor_auto_resolution() -> None:
     result = cloud_mask(scene, method="probability", probability=[0.9])
 
     assert result.cloud_mask == [True]
+
+
+def test_reproject_requires_scene_transform() -> None:
+    scene = Scene(data={"nir": [[1, 2], [3, 4]]}, band_names=["nir"])
+
+    with pytest.raises(ValueError):
+        reproject(scene, transform=(1, 0, 0, 0, 1, 0), shape=(2, 2))
+
+
+def test_reproject_identity_transform_reproduces_grid() -> None:
+    scene = Scene(
+        data={"nir": [[1, 2], [3, 4]]},
+        band_names=["nir"],
+        transform=(1, 0, 0, 0, 1, 0),
+        crs="EPSG:4326",
+    )
+
+    result = reproject(scene, transform=(1, 0, 0, 0, 1, 0), shape=(2, 2))
+
+    assert result.data["nir"] == [[1, 2], [3, 4]]
+    assert result.transform == (1, 0, 0, 0, 1, 0)
+    assert result.history == ("reproject:nearest",)
+
+
+def test_reproject_nearest_downsamples_by_picking_source_pixels() -> None:
+    grid = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]
+    scene = Scene(data={"nir": grid}, band_names=["nir"], transform=(1, 0, 0, 0, 1, 0))
+
+    result = reproject(scene, transform=(2, 0, 0, 0, 2, 0), shape=(2, 2))
+
+    assert result.data["nir"] == [[1, 3], [9, 11]]
+
+
+def test_reproject_nearest_marks_out_of_bounds_as_none() -> None:
+    scene = Scene(data={"nir": [[1, 2], [3, 4]]}, band_names=["nir"], transform=(1, 0, 0, 0, 1, 0))
+
+    result = reproject(scene, transform=(1, 0, 10, 0, 1, 10), shape=(2, 2))
+
+    assert result.data["nir"] == [[None, None], [None, None]]
+
+
+def test_reproject_bilinear_interpolates_between_source_pixels() -> None:
+    scene = Scene(
+        data={"nir": [[0, 10], [20, 30]]}, band_names=["nir"], transform=(1, 0, 0, 0, 1, 0)
+    )
+
+    result = reproject(
+        scene, transform=(1, 0, 0.5, 0, 1, 0.5), shape=(1, 1), resampling="bilinear"
+    )
+
+    assert result.data["nir"][0] == pytest.approx([15.0])
+
+
+def test_reproject_rejects_unsupported_resampling_method() -> None:
+    scene = Scene(data={"nir": [[1, 2], [3, 4]]}, band_names=["nir"], transform=(1, 0, 0, 0, 1, 0))
+
+    with pytest.raises(ValueError):
+        reproject(scene, transform=(1, 0, 0, 0, 1, 0), shape=(2, 2), resampling="cubic")
+
+
+def test_reproject_cross_crs_requires_transformer() -> None:
+    scene = Scene(
+        data={"nir": [[1, 2], [3, 4]]},
+        band_names=["nir"],
+        transform=(1, 0, 0, 0, 1, 0),
+        crs="EPSG:4326",
+    )
+
+    with pytest.raises(ValueError):
+        reproject(scene, transform=(1, 0, 0, 0, 1, 0), shape=(2, 2), crs="EPSG:3857")
+
+
+def test_reproject_cross_crs_uses_transformer() -> None:
+    scene = Scene(
+        data={"nir": [[1, 2], [3, 4]]},
+        band_names=["nir"],
+        transform=(1, 0, 0, 0, 1, 0),
+        crs="EPSG:4326",
+    )
+
+    result = reproject(
+        scene,
+        transform=(1, 0, 0, 0, 1, 0),
+        shape=(2, 2),
+        crs="EPSG:3857",
+        transformer=lambda x, y: (x, y),
+    )
+
+    assert result.data["nir"] == [[1, 2], [3, 4]]
+    assert result.crs == "EPSG:3857"
+
+
+def test_reproject_resamples_cloud_mask_with_nearest_regardless_of_method() -> None:
+    scene = Scene(
+        data={"nir": [[1.0, 2.0], [3.0, 4.0]]},
+        band_names=["nir"],
+        transform=(1, 0, 0, 0, 1, 0),
+        masks={"cloud": [[True, False], [False, True]]},
+    )
+
+    result = reproject(
+        scene, transform=(1, 0, 0.5, 0, 1, 0.5), shape=(1, 1), resampling="bilinear"
+    )
+
+    assert result.cloud_mask == [[True]]
+    assert result.masks["cloud"] == result.cloud_mask
+
+
+def test_register_aligns_scene_onto_reference_grid() -> None:
+    scene = Scene(
+        data={"nir": [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]},
+        band_names=["nir"],
+        transform=(1, 0, 0, 0, 1, 0),
+    )
+    reference = Scene(data={"nir": [[0, 0], [0, 0]]}, transform=(2, 0, 0, 0, 2, 0))
+
+    result = register(scene, reference)
+
+    assert result.data["nir"] == [[1, 3], [9, 11]]
+    assert result.transform == (2, 0, 0, 0, 2, 0)
+    assert result.history == ("register:nearest",)
+
+
+def test_register_requires_reference_transform() -> None:
+    scene = Scene(data={"nir": [[1, 2], [3, 4]]}, band_names=["nir"], transform=(1, 0, 0, 0, 1, 0))
+    reference = Scene(data={"nir": [[0, 0], [0, 0]]})
+
+    with pytest.raises(ValueError):
+        register(scene, reference)
+
+
+def test_register_rejects_mismatched_crs_without_transformer() -> None:
+    scene = Scene(
+        data={"nir": [[1, 2], [3, 4]]},
+        band_names=["nir"],
+        transform=(1, 0, 0, 0, 1, 0),
+        crs="EPSG:4326",
+    )
+    reference = Scene(
+        data={"nir": [[0, 0], [0, 0]]}, transform=(1, 0, 0, 0, 1, 0), crs="EPSG:3857"
+    )
+
+    with pytest.raises(ValueError):
+        register(scene, reference)
