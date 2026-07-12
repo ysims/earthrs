@@ -31,3 +31,17 @@ register_glint_method("my_method", my_glint_method)
 `atmospheric_correction` is **intentionally deferred** — it raises `NotImplementedError` until a
 backend is implemented in a follow-up change. Unlike glint/depth/cloud processing, it does not
 yet have its own registry.
+
+## Reprojection and registration
+
+`earthrs.processing.reproject` resamples a scene onto a new pixel grid — described by an
+`(a, b, c, d, e, f)` affine `transform` and a `(rows, cols)` `shape` — using nearest-neighbour or
+bilinear resampling. `earthrs.processing.register` resamples a scene onto a reference scene's
+grid (transform, shape, and CRS). Both operate on 2D grid band data (a list of rows), matching
+the layout `earthrs.sampling` already assumes — see [Project status](status.md) for how this
+differs from the flat/nested-list layout accepted elsewhere in `earthrs.processing`.
+
+Neither function bundles a CRS database: if the destination `crs` differs from `scene.crs`, you
+must supply a `transformer` callable mapping `(x, y)` in `scene.crs` to `(x, y)` in the
+destination CRS (for example backed by `pyproj`), otherwise a `ValueError` is raised. This keeps
+`pyproj`/`rasterio` optional per the project's light-dependency policy.
