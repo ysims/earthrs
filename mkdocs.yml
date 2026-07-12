@@ -7,3 +7,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Getting started: getting-started.md
+  - Core concepts: concepts.md
+  - Processing: processing.md
+  - Project status: status.md
