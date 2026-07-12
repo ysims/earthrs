@@ -143,7 +143,9 @@ def _linear_slope(x_values: list[float], y_values: list[float]) -> float:
     return numerator / denominator
 
 
-from earthrs.processing.atmospheric import atmospheric_correction
-from earthrs.processing.cloud import cloud_mask
-from earthrs.processing.depth import depth_correct
-from earthrs.processing.glint import remove_glint
+# Re-exported for earthrs.processing's public API; imported here (not at top) since
+# these modules import shared helpers from core, which would otherwise be circular.
+from earthrs.processing.atmospheric import atmospheric_correction  # noqa: E402, F401
+from earthrs.processing.cloud import cloud_mask  # noqa: E402, F401
+from earthrs.processing.depth import depth_correct  # noqa: E402, F401
+from earthrs.processing.glint import remove_glint  # noqa: E402, F401
