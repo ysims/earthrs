@@ -26,9 +26,10 @@ def depth_correct(
 ) -> Scene:
     """Apply depth correction to raster data.
 
-    Method names are resolved from the depth-correction registry. There are three Lyzenga formulations, each denoted using the year of publication -
-    ``"lyzenga1978"``, ``"lyzenga1981"``, ``"lyzenga2006"``. ``"lyzenga"`` is an alias for
-    ``"lyzenga2006"``, the most recent and most widely used variant.
+    Method names are resolved from the depth-correction registry. There are three
+    Lyzenga formulations, each denoted using the year of publication --
+    ``"lyzenga1978"``, ``"lyzenga1981"``, ``"lyzenga2006"``. ``"lyzenga"`` is an
+    alias for ``"lyzenga2006"``, the most recent and most widely used variant.
     """
 
     processor = _DEPTH_REGISTRY.get(method.lower())
