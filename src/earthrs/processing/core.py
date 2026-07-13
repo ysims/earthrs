@@ -53,8 +53,7 @@ def reproject(
 
     When ``crs`` differs from ``scene.crs``, a ``transformer`` callable mapping
     ``(x, y)`` in ``scene.crs`` to ``(x, y)`` in ``crs`` must be supplied (for
-    example backed by ``pyproj``) — earthrs has no bundled CRS database, in
-    keeping with its light-dependency policy.
+    example backed by ``pyproj``).
     """
 
     if scene.transform is None:

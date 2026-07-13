@@ -43,5 +43,4 @@ differs from the flat/nested-list layout accepted elsewhere in `earthrs.processi
 
 Neither function bundles a CRS database: if the destination `crs` differs from `scene.crs`, you
 must supply a `transformer` callable mapping `(x, y)` in `scene.crs` to `(x, y)` in the
-destination CRS (for example backed by `pyproj`), otherwise a `ValueError` is raised. This keeps
-`pyproj`/`rasterio` optional per the project's light-dependency policy.
+destination CRS (for example backed by `pyproj`), otherwise a `ValueError` is raised. 
