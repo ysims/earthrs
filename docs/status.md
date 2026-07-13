@@ -13,9 +13,6 @@ scaffolded but not yet built — see [Getting started](getting-started.md) and
   (for example `-9999`) handling yet.
 - `depth_correct(..., method="lyzenga", variant=...)` records the requested variant in scene
   metadata/history but does not yet apply distinct 1978/1981/2006 formulas.
-- `reproject`/`register` (see [Processing](processing.md)) require each band to be a 2D grid (a
-  list of rows), unlike the flat/nested-list layout accepted elsewhere in `earthrs.processing`.
-  They also have no bundled CRS database — cross-CRS use requires an explicit `transformer`.
 
 ## Scaffolded, not yet implemented
 
