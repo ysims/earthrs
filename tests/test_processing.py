@@ -341,9 +341,7 @@ def test_reproject_bilinear_interpolates_between_source_pixels() -> None:
         data={"nir": [[0, 10], [20, 30]]}, band_names=["nir"], transform=(1, 0, 0, 0, 1, 0)
     )
 
-    result = reproject(
-        scene, transform=(1, 0, 0.5, 0, 1, 0.5), shape=(1, 1), resampling="bilinear"
-    )
+    result = reproject(scene, transform=(1, 0, 0.5, 0, 1, 0.5), shape=(1, 1), resampling="bilinear")
 
     assert result.data["nir"][0] == pytest.approx([15.0])
 
@@ -395,9 +393,7 @@ def test_reproject_resamples_cloud_mask_with_nearest_regardless_of_method() -> N
         masks={"cloud": [[True, False], [False, True]]},
     )
 
-    result = reproject(
-        scene, transform=(1, 0, 0.5, 0, 1, 0.5), shape=(1, 1), resampling="bilinear"
-    )
+    result = reproject(scene, transform=(1, 0, 0.5, 0, 1, 0.5), shape=(1, 1), resampling="bilinear")
 
     assert result.cloud_mask == [[True]]
     assert result.masks["cloud"] == result.cloud_mask
@@ -433,9 +429,7 @@ def test_register_rejects_mismatched_crs_without_transformer() -> None:
         transform=(1, 0, 0, 0, 1, 0),
         crs="EPSG:4326",
     )
-    reference = Scene(
-        data={"nir": [[0, 0], [0, 0]]}, transform=(1, 0, 0, 0, 1, 0), crs="EPSG:3857"
-    )
+    reference = Scene(data={"nir": [[0, 0], [0, 0]]}, transform=(1, 0, 0, 0, 1, 0), crs="EPSG:3857")
 
     with pytest.raises(ValueError):
         register(scene, reference)
