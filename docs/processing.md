@@ -19,7 +19,8 @@ register_glint_method("my_method", my_glint_method)
 ## Implemented methods
 
 - **Glint removal**: `"hedley"` (Hedley et al., 2005).
-- **Depth correction**: `"lyzenga"` (three distinct variants, see below), `"stumpf"` (ratio
+- **Depth correction**: `"lyzenga1978"`, `"lyzenga1981"`, `"lyzenga2006"` (three distinct
+  formulas, see below; plain `"lyzenga"` is an alias for `"lyzenga2006"`), `"stumpf"` (ratio
   transform, Stumpf et al., 2003), `"maritorena"` (single-parameter exponential attenuation).
 - **Cloud masking**: `"sentinel2_qa60"`, `"sentinel2_scl"`, `"landsat_qa_pixel"`, `"probability"`
   (threshold on a cloud-probability layer), `"user_mask"` (pass through a caller-supplied mask).
@@ -32,11 +33,12 @@ yet have its own registry.
 
 ## Lyzenga depth-correction variants
 
-`depth_correct(scene, method="lyzenga", variant=...)` selects between three literature-accurate
-formulas — they are genuinely different algorithms, not the same transform under three names, so
-each has its own required keyword arguments.
+The Lyzenga formula is registered once per publication year — `"lyzenga1978"`, `"lyzenga1981"`,
+`"lyzenga2006"` — since each is a genuinely different algorithm, not the same transform under
+three names, so each has its own required keyword arguments. Plain `method="lyzenga"` is an
+alias for `"lyzenga2006"`, the most recent and most widely used variant.
 
-### `"1978"` — per-band log-linearising transform
+### `"lyzenga1978"` — per-band log-linearising transform
 
 The single-band transform from Lyzenga (1978), eqs. (1) & (7). Replaces every spectral band with
 
@@ -49,7 +51,7 @@ through unchanged. Bands are not combined with each other, so this variant does 
 bottom-reflectance variation — it's the foundational linearisation the other two variants build on.
 
 ```python
-depth_correct(scene, method="lyzenga", variant="1978", deep_water_radiance={"blue": 0.02})
+depth_correct(scene, method="lyzenga1978", deep_water_radiance={"blue": 0.02})
 ```
 
 - `deep_water_radiance` (mapping or scalar, default `0.0` per band) — the deep-water radiance
@@ -57,7 +59,7 @@ depth_correct(scene, method="lyzenga", variant="1978", deep_water_radiance={"blu
 - `epsilon` (default `1e-6`) — floor applied to `L_i - L_si` before the log, to avoid `log(0)`
   or `log(negative)`.
 
-### `"1981"` — two-band depth-invariant bottom index
+### `"lyzenga1981"` — two-band depth-invariant bottom index
 
 The classic two-band index from Lyzenga (1981), eq. (2). Adds a `lyzenga_dii` band:
 
@@ -73,8 +75,7 @@ water depth.
 ```python
 depth_correct(
     scene,
-    method="lyzenga",
-    variant="1981",
+    method="lyzenga1981",
     band_i="blue",
     band_j="green",
     k_i=0.056,
@@ -85,12 +86,9 @@ depth_correct(
 - `band_i`, `band_j` (default `"blue"`, `"green"`) — the two bands to combine.
 - `k_i`, `k_j` (**required**) — water-attenuation coefficients for `band_i`/`band_j`. Raises
   `ValueError` if either is missing, or if both are zero (undefined).
-- `deep_water_radiance`, `epsilon` — as in `"1978"`.
+- `deep_water_radiance`, `epsilon` — as in `"lyzenga1978"`.
 
-This is the default variant (`depth_correct(scene, method="lyzenga")` is equivalent to
-`variant="1981"`), so `k_i`/`k_j` must be supplied even when `variant` is omitted.
-
-### `"2006"` — empirical multi-band depth regression
+### `"lyzenga2006"` — empirical multi-band depth regression
 
 The regression-based estimator from Lyzenga et al. (2006), eq. (9). Adds a `lyzenga_depth` band
 containing an actual depth estimate (in the same units as the calibration data, typically metres):
@@ -107,8 +105,7 @@ depth measurements (for example LIDAR) for the site being processed.
 ```python
 depth_correct(
     scene,
-    method="lyzenga",
-    variant="2006",
+    method="lyzenga2006",  # or method="lyzenga" — it's an alias for this variant
     bands=("blue", "green"),
     coefficients={"blue": -17.42, "green": 26.7},
     intercept=17.84,
@@ -119,7 +116,7 @@ depth_correct(
 - `coefficients` (**required**) — mapping of band name to its fitted regression weight `h_j`.
   Raises `ValueError` if missing, or if any band in `bands` has no entry.
 - `intercept` (default `0.0`) — the `h_0` term.
-- `deep_water_radiance`, `epsilon` — as in `"1978"`.
+- `deep_water_radiance`, `epsilon` — as in `"lyzenga1978"`.
 
 None of the three variants take a known `depth` as input — the whole point is to derive depth (or
 a depth-invariant index) from radiance, unlike `"maritorena"` which requires one.

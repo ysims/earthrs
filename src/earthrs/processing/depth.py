@@ -27,13 +27,22 @@ def depth_correct(
 ) -> Scene:
     """Apply depth correction to raster data.
 
-    Method names are resolved from the depth-correction registry.
+    Method names are resolved from the depth-correction registry. The Lyzenga
+    formula is registered under a distinct name per publication year --
+    ``"lyzenga1978"``, ``"lyzenga1981"``, ``"lyzenga2006"`` -- since each is a
+    genuinely different algorithm; plain ``"lyzenga"`` is an alias for
+    ``"lyzenga2006"``, the most recent and most widely used variant.
     """
 
     processor = _DEPTH_REGISTRY.get(method.lower())
     if processor is None:
         raise ValueError(f"Unknown depth-correction method '{method}'.")
     return processor(scene, depth=depth, **kwargs)
+
+
+def _require_mapping_data(scene: Scene, label: str) -> None:
+    if not isinstance(scene.data, dict):
+        raise TypeError(f"{label} correction expects mapping-based scene data.")
 
 
 def _band_param(
@@ -60,12 +69,12 @@ def _log_transform(values: Any, deep_water_radiance: float, epsilon: float) -> A
 
 
 def _finalise_lyzenga(
-    scene: Scene, *, data: dict[str, Any], band_names: tuple[str, ...], variant: str
+    scene: Scene, *, data: dict[str, Any], band_names: tuple[str, ...], method: str
 ) -> Scene:
     """Build the result `Scene` shared by all Lyzenga variants."""
 
     metadata = dict(scene.metadata)
-    metadata["depth_method"] = f"lyzenga_{variant}"
+    metadata["depth_method"] = method
     return Scene(
         data=data,
         crs=scene.crs,
@@ -74,7 +83,7 @@ def _finalise_lyzenga(
         band_names=band_names,
         acquisition_time=scene.acquisition_time,
         sensor=scene.sensor,
-        history=(*scene.history, f"depth_correct:lyzenga:{variant}"),
+        history=(*scene.history, f"depth_correct:{method}"),
         masks=dict(scene.masks),
         cloud_mask=scene.cloud_mask,
         cloud_probability=scene.cloud_probability,
@@ -84,8 +93,10 @@ def _finalise_lyzenga(
 def _lyzenga_1978(
     scene: Scene,
     *,
+    depth: Any | None = None,
     deep_water_radiance: Mapping[str, float] | float | None = None,
     epsilon: float = 1e-6,
+    **_: Any,
 ) -> Scene:
     """Lyzenga (1978) per-band log-linearising transform.
 
@@ -94,6 +105,8 @@ def _lyzenga_1978(
     ``qa_pixel``) pass through unchanged. Bands are not combined with each other.
     """
 
+    _ = depth
+    _require_mapping_data(scene, "Lyzenga 1978")
     dwr = _band_param(scene.data.keys(), deep_water_radiance, 0.0)
     updated = {}
     for band, values in scene.data.items():
@@ -101,18 +114,22 @@ def _lyzenga_1978(
             updated[band] = values
             continue
         updated[band] = _log_transform(values, dwr[band], epsilon)
-    return _finalise_lyzenga(scene, data=updated, band_names=scene.band_names, variant="1978")
+    return _finalise_lyzenga(
+        scene, data=updated, band_names=scene.band_names, method="lyzenga1978"
+    )
 
 
 def _lyzenga_1981(
     scene: Scene,
     *,
+    depth: Any | None = None,
     band_i: str = "blue",
     band_j: str = "green",
     k_i: float | None = None,
     k_j: float | None = None,
     deep_water_radiance: Mapping[str, float] | float | None = None,
     epsilon: float = 1e-6,
+    **_: Any,
 ) -> Scene:
     """Lyzenga (1981) two-band depth-invariant bottom index.
 
@@ -123,6 +140,8 @@ def _lyzenga_1981(
     be used as a bottom-type index rather than an estimate of depth itself.
     """
 
+    _ = depth
+    _require_mapping_data(scene, "Lyzenga 1981")
     if k_i is None or k_j is None:
         raise ValueError(
             "Lyzenga 1981 depth-invariant index requires water-attenuation "
@@ -141,17 +160,19 @@ def _lyzenga_1981(
     updated = dict(scene.data)
     updated["lyzenga_dii"] = dii
     band_names = (*scene.band_names, "lyzenga_dii")
-    return _finalise_lyzenga(scene, data=updated, band_names=band_names, variant="1981")
+    return _finalise_lyzenga(scene, data=updated, band_names=band_names, method="lyzenga1981")
 
 
 def _lyzenga_2006(
     scene: Scene,
     *,
+    depth: Any | None = None,
     bands: tuple[str, ...] = ("blue", "green"),
     coefficients: Mapping[str, float] | None = None,
     intercept: float = 0.0,
     deep_water_radiance: Mapping[str, float] | float | None = None,
     epsilon: float = 1e-6,
+    **_: Any,
 ) -> Scene:
     """Lyzenga et al. (2006) empirical multi-band depth regression.
 
@@ -159,9 +180,12 @@ def _lyzenga_2006(
     ``depth = h_0 - sum(h_j * X_j)``, where ``X_j = ln(L_j - L_sj)`` and `h_j` are
     empirically fitted `coefficients` (`intercept` supplies ``h_0``). Unlike the
     1978/1981 variants, this produces a direct depth estimate rather than a
-    depth-invariant index.
+    depth-invariant index. This is the most recent and most widely used Lyzenga
+    variant, so it is also registered as the plain ``"lyzenga"`` method.
     """
 
+    _ = depth
+    _require_mapping_data(scene, "Lyzenga 2006")
     if not bands:
         raise ValueError("Lyzenga 2006 depth regression requires at least one band.")
     if coefficients is None:
@@ -188,42 +212,7 @@ def _lyzenga_2006(
     updated = dict(scene.data)
     updated["lyzenga_depth"] = depth_values
     band_names = (*scene.band_names, "lyzenga_depth")
-    return _finalise_lyzenga(scene, data=updated, band_names=band_names, variant="2006")
-
-
-_LYZENGA_VARIANTS = {
-    "1978": _lyzenga_1978,
-    "1981": _lyzenga_1981,
-    "2006": _lyzenga_2006,
-}
-
-
-def _lyzenga_depth(
-    scene: Scene,
-    *,
-    depth: Any | None = None,
-    variant: str = "1981",
-    **kwargs: Any,
-) -> Scene:
-    """Dispatch to the requested Lyzenga variant (``"1978"``, ``"1981"``, ``"2006"``).
-
-    Lyzenga methods derive depth information from radiance; unlike Maritorena's
-    attenuation model, none of them take an already-known depth as input, so
-    `depth` is accepted (for API symmetry with other depth-correction methods) but
-    ignored.
-    """
-
-    _ = depth
-    if not isinstance(scene.data, dict):
-        raise TypeError("Lyzenga correction expects mapping-based scene data.")
-    variant_key = str(variant)
-    implementation = _LYZENGA_VARIANTS.get(variant_key)
-    if implementation is None:
-        raise ValueError(
-            f"Unknown Lyzenga variant '{variant}'. Expected one of "
-            f"{sorted(_LYZENGA_VARIANTS)}."
-        )
-    return implementation(scene, **kwargs)
+    return _finalise_lyzenga(scene, data=updated, band_names=band_names, method="lyzenga2006")
 
 
 def _stumpf_depth(
@@ -308,6 +297,9 @@ def _maritorena_depth(
     )
 
 
-register_depth_method("lyzenga", _lyzenga_depth)
+register_depth_method("lyzenga1978", _lyzenga_1978)
+register_depth_method("lyzenga1981", _lyzenga_1981)
+register_depth_method("lyzenga2006", _lyzenga_2006)
+register_depth_method("lyzenga", _lyzenga_2006)  # alias: most recent/popular variant
 register_depth_method("stumpf", _stumpf_depth)
 register_depth_method("maritorena", _maritorena_depth)
