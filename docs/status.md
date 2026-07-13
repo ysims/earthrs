@@ -11,8 +11,6 @@ scaffolded but not yet built — see [Getting started](getting-started.md) and
   data the `Scene` docstring describes as the typical case.
 - Spectral indices treat only Python `None` as a missing value; there is no nodata/fill-value
   (for example `-9999`) handling yet.
-- `depth_correct(..., method="lyzenga", variant=...)` records the requested variant in scene
-  metadata/history but does not yet apply distinct 1978/1981/2006 formulas.
 
 ## Scaffolded, not yet implemented
 
