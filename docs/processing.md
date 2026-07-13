@@ -19,8 +19,7 @@ register_glint_method("my_method", my_glint_method)
 ## Implemented methods
 
 - **Glint removal**: `"hedley"` (Hedley et al., 2005).
-- **Depth correction**: `"lyzenga1978"`, `"lyzenga1981"`, `"lyzenga2006"` (three distinct
-  formulas, see below; plain `"lyzenga"` is an alias for `"lyzenga2006"`), `"stumpf"` (ratio
+- **Depth correction**: `"lyzenga1978"`, `"lyzenga1981"`, `"lyzenga2006"` (the default `"lyzenga"` is an alias for `"lyzenga2006"`), `"stumpf"` (ratio
   transform, Stumpf et al., 2003), `"maritorena"` (single-parameter exponential attenuation).
 - **Cloud masking**: `"sentinel2_qa60"`, `"sentinel2_scl"`, `"landsat_qa_pixel"`, `"probability"`
   (threshold on a cloud-probability layer), `"user_mask"` (pass through a caller-supplied mask).
@@ -33,9 +32,8 @@ yet have its own registry.
 
 ## Lyzenga depth-correction variants
 
-The Lyzenga formula is registered once per publication year — `"lyzenga1978"`, `"lyzenga1981"`,
-`"lyzenga2006"` — since each is a genuinely different algorithm, not the same transform under
-three names, so each has its own required keyword arguments. Plain `method="lyzenga"` is an
+There are three Lyzenga algorithms for depth correction - `"lyzenga1978"`, `"lyzenga1981"`,
+`"lyzenga2006"`. `method="lyzenga"` is an
 alias for `"lyzenga2006"`, the most recent and most widely used variant.
 
 ### `"lyzenga1978"` — per-band log-linearising transform

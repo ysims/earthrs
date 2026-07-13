@@ -1,5 +1,4 @@
-"""Depth-correction processing routines.
-"""
+"""Depth-correction processing routines."""
 
 from __future__ import annotations
 
@@ -27,10 +26,8 @@ def depth_correct(
 ) -> Scene:
     """Apply depth correction to raster data.
 
-    Method names are resolved from the depth-correction registry. The Lyzenga
-    formula is registered under a distinct name per publication year --
-    ``"lyzenga1978"``, ``"lyzenga1981"``, ``"lyzenga2006"`` -- since each is a
-    genuinely different algorithm; plain ``"lyzenga"`` is an alias for
+    Method names are resolved from the depth-correction registry. There are three Lyzenga formulations, each denoted using the year of publication -
+    ``"lyzenga1978"``, ``"lyzenga1981"``, ``"lyzenga2006"``. ``"lyzenga"`` is an alias for
     ``"lyzenga2006"``, the most recent and most widely used variant.
     """
 
