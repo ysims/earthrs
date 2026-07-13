@@ -23,18 +23,3 @@ Full documentation, including the core data model, processing registries, and cu
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up a development environment and submit changes.
-
-## Development
-
-```bash
-pip install -e .[dev]
-pytest
-ruff check .
-```
-
-## Building the docs locally
-
-```bash
-pip install -e .[docs]
-mkdocs serve
-```
