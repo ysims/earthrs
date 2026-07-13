@@ -15,6 +15,14 @@ pytest
 ruff check .
 ```
 
+Auto-format and auto-fix what ruff can fix on its own:
+
+```bash
+scripts/format.sh
+```
+
+Use `scripts/format.sh --check` to verify formatting without writing changes.
+
 ## Documentation
 
 User-facing documentation lives in [docs/](docs/) and is built with MkDocs. If you change or add public behaviour, update the relevant page there.
