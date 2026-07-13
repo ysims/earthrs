@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from earthrs.scene import Scene
@@ -115,10 +114,6 @@ def _map_binary(left: Any, right: Any, func) -> Any:
             for left_value, right_value in zip(left, right, strict=True)
         ]
     return func(float(left), float(right))
-
-
-def _safe_log(value: float) -> float:
-    return math.log(max(value, 1e-6))
 
 
 def _flatten_numeric(values: Any) -> list[float]:
