@@ -43,9 +43,7 @@ def _require_mapping_data(scene: Scene, label: str) -> None:
         raise TypeError(f"{label} correction expects mapping-based scene data.")
 
 
-def _band_param(
-    bands: Iterable[str], value: Any, default: float
-) -> dict[str, float]:
+def _band_param(bands: Iterable[str], value: Any, default: float) -> dict[str, float]:
     """Normalise a per-band parameter to a ``{band: value}`` mapping.
 
     Accepts ``None`` (every band gets `default`), a single scalar (every band gets
@@ -112,9 +110,7 @@ def _lyzenga_1978(
             updated[band] = values
             continue
         updated[band] = _log_transform(values, dwr[band], epsilon)
-    return _finalise_lyzenga(
-        scene, data=updated, band_names=scene.band_names, method="lyzenga1978"
-    )
+    return _finalise_lyzenga(scene, data=updated, band_names=scene.band_names, method="lyzenga1978")
 
 
 def _lyzenga_1981(

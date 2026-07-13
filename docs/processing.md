@@ -118,3 +118,16 @@ depth_correct(
 
 None of the three variants take a known `depth` as input — the whole point is to derive depth (or
 a depth-invariant index) from radiance, unlike `"maritorena"` which requires one.
+
+## Reprojection and registration
+
+`earthrs.processing.reproject` resamples a scene onto a new pixel grid — described by an
+`(a, b, c, d, e, f)` affine `transform` and a `(rows, cols)` `shape` — using nearest-neighbour or
+bilinear resampling. `earthrs.processing.register` resamples a scene onto a reference scene's
+grid (transform, shape, and CRS). Both operate on 2D grid band data (a list of rows), matching
+the layout `earthrs.sampling` already assumes — see [Project status](status.md) for how this
+differs from the flat/nested-list layout accepted elsewhere in `earthrs.processing`.
+
+Neither function bundles a CRS database: if the destination `crs` differs from `scene.crs`, you
+must supply a `transformer` callable mapping `(x, y)` in `scene.crs` to `(x, y)` in the
+destination CRS (for example backed by `pyproj`), otherwise a `ValueError` is raised. 

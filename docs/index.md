@@ -16,9 +16,9 @@ GeoPandas) instead of replacing it.
 ## Where to go next
 
 - [Getting started](getting-started.md) — install the package and run a first example.
-- [Core concepts](concepts.md) — the `Scene`, `Dataset`, and `Samples` data model, and cloud
-  metadata normalisation.
-- [Processing](processing.md) — glint removal, depth correction, and cloud masking, and how to
-  register new methods.
+- [Core concepts](concepts.md) — the `Scene`, `Dataset`, and `Samples` data model, cloud
+  metadata normalisation, spectral indices, and sampling.
+- [Processing](processing.md) — glint removal, depth correction, cloud masking,
+  reprojection/registration, and how to register new methods.
 - [Project status](status.md) — what's implemented, what's known-limited, and what's scaffolded
   but not yet built.

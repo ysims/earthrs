@@ -16,4 +16,4 @@ scaffolded but not yet built — see [Getting started](getting-started.md) and
 
 - sensor definitions (`earthrs.sensors`) beyond placeholder name-only classes
 - machine-learning helpers (`earthrs.ml`)
-- `register`/`reproject` raster-registration and reprojection helpers
+- visualisation helpers (`earthrs.plotting`) — currently an empty package

@@ -35,3 +35,15 @@ regardless of which field an importer populated, `scene.cloud_mask`, `scene.clou
 `scene.masks["cloud"]`, and `scene.metadata["cloud_mask"]` all agree. Downstream algorithms
 (cloud masking, cloud filtering) read from this normalised schema rather than product-specific
 field names.
+
+## Spectral indices
+
+`earthrs.indices` provides `ndvi`, `ndwi`, and `evi`, each taking a `Scene` and returning
+per-pixel index values computed from its named bands.
+
+## Sampling
+
+`earthrs.sampling` provides `sample_points`, `sample_polygons`, and `sample_transects` (plus a
+`sample()` dispatcher that infers the target from geometry type), all returning `Samples` — one
+row per point, polygon, or transect vertex observation. `Dataset.sample_points` delegates to
+`earthrs.sampling.sample_points` per scene and aggregates the results into a single `Samples`.
