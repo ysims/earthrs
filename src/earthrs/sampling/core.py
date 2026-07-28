@@ -22,6 +22,8 @@ def sample_points(scene: Scene, points: Any, *, method: str = "nearest") -> Samp
             "observation_id": index,
             "row": point["row"],
             "col": point["col"],
+            "sensor": scene.sensor,
+            "acquisition_time": scene.acquisition_time,
         }
         for band_name in scene.bands:
             band_data = _get_band(scene, band_name)
@@ -42,7 +44,11 @@ def sample_polygons(scene: Scene, polygons: Any, *, reducer: str = "mean") -> Sa
     polygon_rows = _coerce_polygons(polygons)
     rows: list[dict[str, Any]] = []
     for index, polygon in enumerate(polygon_rows):
-        row: dict[str, Any] = {"observation_id": index}
+        row: dict[str, Any] = {
+            "observation_id": index,
+            "sensor": scene.sensor,
+            "acquisition_time": scene.acquisition_time,
+        }
         for band_name in scene.bands:
             band_data = _get_band(scene, band_name)
             pixels = [
@@ -72,6 +78,8 @@ def sample_transects(scene: Scene, transects: Any, *, spacing: float | None = No
                 "vertex_id": vertex_index,
                 "row": row_col[0],
                 "col": row_col[1],
+                "sensor": scene.sensor,
+                "acquisition_time": scene.acquisition_time,
             }
             for band_name in scene.bands:
                 band_data = _get_band(scene, band_name)
