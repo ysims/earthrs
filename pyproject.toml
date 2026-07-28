@@ -34,6 +34,17 @@ docs = [
   "mkdocs>=1.6",
   "mkdocs-material>=9.5",
 ]
+ml = [
+  "numpy>=1.24",
+]
+ml-torch = [
+  "earthrs[ml]",
+  "torch>=2.0",
+]
+ml-tensorflow = [
+  "earthrs[ml]",
+  "tensorflow>=2.13",
+]
 
 [project.urls]
 Homepage = "https://github.com/ysims/earthrs"
