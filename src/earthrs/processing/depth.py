@@ -217,11 +217,28 @@ def _stumpf_depth(
     green_band: str = "green",
     m0: float = 0.0,
     m1: float = 1.0,
+    n: float = 1000.0,
+    epsilon: float = 1e-6,
     **_: Any,
 ) -> Scene:
-    """Stumpf (2003) band-ratio depth transform.
+    """Stumpf, Holderied & Sinclair (2003) band-ratio depth transform.
 
-    Adds a ``stumpf_depth`` band from ``m0 - m1 * ln(blue) / ln(green)``.
+    Adds a ``stumpf_depth`` band from eq. (1),
+    ``depth = m1 * ln(n * Rw_i) / ln(n * Rw_j) - m0``, where `Rw_i`/`Rw_j` are
+    `blue_band`/`green_band` reflectance (blue is the numerator band, ``i``; green
+    is the denominator band, ``j``, following the paper's ``lambda_i``/``lambda_j``
+    notation), and `m0`/`m1` are empirically tuned per-image
+    coefficients. `n` is a fixed scaling constant, chosen so that ``n * Rw`` stays
+    comfortably above 1 across the sensor's expected reflectance range: this keeps
+    ``ln(n * Rw)`` positive (avoiding a sign flip in the ratio) and well away from
+    zero (avoiding the numerical instability that taking logs of small fractional
+    reflectance values, close to zero, is prone to). The original paper uses
+    ``n = 1000``. `epsilon` floors ``n * Rw`` at ``1 + epsilon`` so the log stays
+    strictly positive even for zero or negative input reflectance.
+
+    Citation: Stumpf, R. P., Holderied, K., & Sinclair, M. (2003). "Determination
+    of water depth with high-resolution satellite imagery over variable bottom
+    types." Limnology and Oceanography, 48(1), 547-556, eq. (1).
     """
 
     _ = depth
@@ -229,10 +246,11 @@ def _stumpf_depth(
         raise TypeError("Stumpf correction expects mapping-based scene data.")
     blue = scene.data[blue_band]
     green = scene.data[green_band]
+    floor = 1.0 + epsilon
     stumpf = _map_binary(
         blue,
         green,
-        lambda b, g: m0 - m1 * (math.log(max(b, 1e-6)) / math.log(max(g, 1e-6))),
+        lambda b, g: m1 * (math.log(max(n * b, floor)) / math.log(max(n * g, floor))) - m0,
     )
     updated = dict(scene.data)
     updated["stumpf_depth"] = stumpf
@@ -257,22 +275,51 @@ def _maritorena_depth(
     scene: Scene,
     *,
     depth: Any | None = None,
-    attenuation: float = 0.1,
+    deep_water_reflectance: Mapping[str, float] | float | None = 0.0,
+    attenuation: Mapping[str, float] | float | None = 0.1,
     **_: Any,
 ) -> Scene:
-    """Single-parameter exponential attenuation correction given a known `depth`.
+    """Maritorena, Morel & Gentili (1994) two-flow shallow-water reflectance model.
 
-    Scales each band by ``exp(attenuation * depth)``.
+    The forward model for water-leaving reflectance ``Rw`` over a finite-depth
+    bottom is ``Rw(depth) = Rw_inf + (Rb - Rw_inf) * exp(-2 * K_d * depth)``, where
+    ``Rw_inf`` is the reflectance of optically-deep water (same band, no bottom
+    contribution), ``Rb`` is the bottom albedo/reflectance, ``K_d`` is the diffuse
+    attenuation coefficient, and the factor of 2 accounts for the two-way (down-
+    and up-welling) light path. Unlike the Lyzenga/Stumpf transforms in this
+    module, `depth` here is a *known* input rather than a quantity being
+    estimated, so this correction inverts the forward model to recover bottom
+    reflectance from measured water-leaving reflectance:
+    ``Rb = Rw_inf + (Rw_measured - Rw_inf) / exp(-2 * K_d * depth)``.
+
+    `deep_water_reflectance` supplies ``Rw_inf`` (per-band mapping or scalar,
+    default ``0.0``). `attenuation` supplies ``K_d`` (per-band mapping or scalar,
+    default ``0.1``), in units matched to `depth`'s units.
+
+    This model is also the basis of later semi-analytical shallow-water
+    inversions (e.g. Lee et al.).
+
+    Citation: Maritorena, S., Morel, A., & Gentili, B. (1994). "Diffuse
+    reflectance of oceanic shallow waters: influence of water depth and bottom
+    albedo." Limnology and Oceanography, 39(7), 1689-1703.
     """
 
     if not isinstance(scene.data, dict):
         raise TypeError("Maritorena correction expects mapping-based scene data.")
     if depth is None:
         raise ValueError("Maritorena correction requires `depth`.")
+    rw_inf = _band_param(scene.data.keys(), deep_water_reflectance, 0.0)
+    k_d = _band_param(scene.data.keys(), attenuation, 0.1)
     updated = {}
     for band, values in scene.data.items():
+        band_rw_inf = rw_inf[band]
+        band_k_d = k_d[band]
         updated[band] = _map_binary(
-            values, depth, lambda value, d: value * math.exp(attenuation * d)
+            values,
+            depth,
+            lambda rw, d, rw_inf=band_rw_inf, kd=band_k_d: (
+                rw_inf + (rw - rw_inf) / math.exp(-2.0 * kd * d)
+            ),
         )
     metadata = dict(scene.metadata)
     metadata["depth_method"] = "maritorena"
