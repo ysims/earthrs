@@ -17,7 +17,11 @@ class Scene:
     Parameters
     ----------
     data:
-        Raster data, typically an xarray ``DataArray`` or ``Dataset``.
+        Raster data. The always-available, zero-dependency default is a ``dict[str, list]``
+        mapping band names to nested-list arrays. ``earthrs.indices`` and ``earthrs.sampling``
+        also accept an xarray ``DataArray``/``Dataset`` or a rasterio dataset handle when the
+        optional ``geo`` extra is installed (``pip install "earthrs[geo]"``) — see
+        `docs/concepts.md`'s "Scene.data backing stores" section for the exact conventions.
     crs:
         Coordinate reference system for the scene.
     transform:

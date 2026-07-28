@@ -7,6 +7,16 @@ from typing import Any
 from earthrs.samples import Samples
 from earthrs.scene import Scene
 
+try:
+    import rasterio
+except ImportError:  # pragma: no cover - exercised only when rasterio is absent
+    rasterio = None
+
+try:
+    import xarray
+except ImportError:  # pragma: no cover - exercised only when xarray is absent
+    xarray = None
+
 
 def sample_points(scene: Scene, points: Any, *, method: str = "nearest") -> Samples:
     """Extract raster values at point locations.
@@ -187,15 +197,64 @@ def _coerce_transects(transects: Any) -> list[dict[str, list[tuple[int, int]]]]:
 
 
 def _get_band(scene: Scene, band_name: str) -> Any:
-    if isinstance(scene.data, dict):
-        if band_name not in scene.data:
+    """Return a single band's 2D data, regardless of the backing store.
+
+    Supports the following ``scene.data`` shapes:
+
+    - ``dict[str, list]`` (the always-available, zero-dependency default): returned as-is.
+    - ``xarray.DataArray`` with a ``band`` dimension whose coordinate values are band names
+      (matching the order of ``scene.band_names``): selected via ``.sel(band=band_name)``,
+      returning a 2D ``DataArray``.
+    - ``xarray.Dataset`` with one data variable per band: band access via ``data[band_name]``,
+      returning a 2D ``DataArray``.
+    - A rasterio dataset handle (anything exposing ``.read(band_index)``, 1-indexed): band
+      names map to rasterio band indices by position, so ``scene.band_names[i]`` corresponds
+      to rasterio band ``i + 1``. Returns a 2D NumPy array from ``.read(band_index)``.
+    """
+
+    data = scene.data
+    if isinstance(data, dict):
+        if band_name not in data:
             raise ValueError(f"Band '{band_name}' not found in scene data.")
-        return scene.data[band_name]
-    raise TypeError("Sampling currently expects scene data as a mapping of band names to arrays.")
+        return data[band_name]
+    if xarray is not None and isinstance(data, xarray.Dataset):
+        if band_name not in data.data_vars:
+            raise ValueError(f"Band '{band_name}' not found in scene data.")
+        return data[band_name]
+    if xarray is not None and isinstance(data, xarray.DataArray):
+        if "band" not in data.dims or "band" not in data.coords:
+            raise TypeError(
+                "xarray.DataArray scene data must have a 'band' dimension with a matching "
+                "coordinate to support band access."
+            )
+        if band_name not in data.coords["band"].values.tolist():
+            raise ValueError(f"Band '{band_name}' not found in scene data.")
+        return data.sel(band=band_name)
+    if rasterio is not None and hasattr(data, "read") and hasattr(data, "count"):
+        if band_name not in scene.band_names:
+            raise ValueError(f"Band '{band_name}' not found in scene data.")
+        band_index = scene.band_names.index(band_name) + 1
+        return data.read(band_index)
+    raise TypeError(
+        "Sampling currently expects scene data as a mapping of band names to arrays, an "
+        "xarray DataArray/Dataset, or a rasterio dataset."
+    )
 
 
 def _read_cell(data: Any, row: int, col: int) -> Any:
-    return data[row][col]
+    """Read a single value out of 2D band data, regardless of the backing store.
+
+    Nested Python lists/tuples (the zero-dependency default) are indexed exactly as before:
+    ``data[row][col]``. Anything else (an ``xarray.DataArray`` band slice, or a NumPy-like 2D
+    array as returned by rasterio's ``.read(band_index)``) is assumed to support NumPy-style
+    tuple indexing (``data[row, col]``); the result is unwrapped to a native Python scalar via
+    ``.item()`` when available, so callers get plain floats/ints regardless of backend.
+    """
+
+    if isinstance(data, (list, tuple)):
+        return data[row][col]
+    value = data[row, col]
+    return value.item() if hasattr(value, "item") else value
 
 
 def _reduce_values(values: list[Any], reducer: str) -> float:

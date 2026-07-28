@@ -11,6 +11,16 @@ from typing import Any
 
 from earthrs.scene import Scene
 
+try:
+    import rasterio
+except ImportError:  # pragma: no cover - exercised only when rasterio is absent
+    rasterio = None
+
+try:
+    import xarray
+except ImportError:  # pragma: no cover - exercised only when xarray is absent
+    xarray = None
+
 
 def ndvi(scene: Scene, *, nir_band: str = "nir", red_band: str = "red") -> Any:
     """Compute NDVI from a scene.
@@ -64,12 +74,48 @@ def evi(
 
 
 def _get_band(scene: Scene, band_name: str) -> Any:
-    if isinstance(scene.data, dict):
-        if band_name not in scene.data:
+    """Return band data as nested Python lists, regardless of the backing store.
+
+    Supports the following ``scene.data`` shapes:
+
+    - ``dict[str, list]`` (the always-available, zero-dependency default): returned as-is.
+    - ``xarray.DataArray`` with a ``band`` dimension whose coordinate values are band names
+      (matching the order of ``scene.band_names``), or ``xarray.Dataset`` with one data
+      variable per band: converted to nested lists via ``.values.tolist()``.
+    - A rasterio dataset handle (anything exposing ``.read(band_index)``, 1-indexed): band
+      names map to rasterio band indices by position, so ``scene.band_names[i]`` corresponds
+      to rasterio band ``i + 1``. Converted to nested lists via ``.tolist()``.
+
+    The result is always plain nested lists so downstream elementwise helpers (`_map_binary`,
+    `_map_ternary`) do not need to know about the original backing store.
+    """
+
+    data = scene.data
+    if isinstance(data, dict):
+        if band_name not in data:
             raise ValueError(f"Band '{band_name}' not found in scene data.")
-        return scene.data[band_name]
+        return data[band_name]
+    if xarray is not None and isinstance(data, xarray.Dataset):
+        if band_name not in data.data_vars:
+            raise ValueError(f"Band '{band_name}' not found in scene data.")
+        return data[band_name].values.tolist()
+    if xarray is not None and isinstance(data, xarray.DataArray):
+        if "band" not in data.dims or "band" not in data.coords:
+            raise TypeError(
+                "xarray.DataArray scene data must have a 'band' dimension with a matching "
+                "coordinate to support band access."
+            )
+        if band_name not in data.coords["band"].values.tolist():
+            raise ValueError(f"Band '{band_name}' not found in scene data.")
+        return data.sel(band=band_name).values.tolist()
+    if rasterio is not None and hasattr(data, "read") and hasattr(data, "count"):
+        if band_name not in scene.band_names:
+            raise ValueError(f"Band '{band_name}' not found in scene data.")
+        band_index = scene.band_names.index(band_name) + 1
+        return data.read(band_index).tolist()
     raise TypeError(
-        "Index calculations currently expect scene data as a mapping of band names to arrays."
+        "Index calculations currently expect scene data as a mapping of band names to arrays, "
+        "an xarray DataArray/Dataset, or a rasterio dataset."
     )
 
 
