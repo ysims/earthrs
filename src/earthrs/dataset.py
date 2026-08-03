@@ -85,8 +85,6 @@ class Dataset:
             for row in scene_samples:
                 enriched = dict(row)
                 enriched.setdefault("scene_index", scene_index)
-                enriched.setdefault("sensor", scene.sensor)
-                enriched.setdefault("acquisition_time", scene.acquisition_time)
                 rows.append(enriched)
         return Samples(rows=tuple(rows), metadata={"sampling_scope": "dataset"})
 

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from earthrs.sampling import sample, sample_points, sample_polygons, sample_transects
@@ -67,6 +69,26 @@ def test_sample_points_reads_row_col_and_supports_dict_or_xy_keys() -> None:
     assert samples.metadata["sampling_target"] == "points"
 
 
+def test_sample_points_includes_scene_provenance() -> None:
+    scene = _grid_scene(sensor="Sentinel-2", acquisition_time=datetime(2024, 1, 1))
+
+    samples = sample_points(scene, {"row": 0, "col": 0})
+
+    assert samples.rows[0]["sensor"] == "Sentinel-2"
+    assert samples.rows[0]["acquisition_time"] == datetime(2024, 1, 1)
+
+
+def test_sample_points_includes_none_provenance_when_unset() -> None:
+    scene = _grid_scene()
+
+    samples = sample_points(scene, {"row": 0, "col": 0})
+
+    assert "sensor" in samples.rows[0]
+    assert "acquisition_time" in samples.rows[0]
+    assert samples.rows[0]["sensor"] is None
+    assert samples.rows[0]["acquisition_time"] is None
+
+
 def test_sample_points_rejects_unsupported_method() -> None:
     scene = _grid_scene()
 
@@ -100,6 +122,28 @@ def test_sample_polygons_reduces_pixels() -> None:
     assert mean_samples.metadata["sampling_target"] == "polygons"
 
 
+def test_sample_polygons_includes_scene_provenance() -> None:
+    scene = _grid_scene(sensor="Sentinel-2", acquisition_time=datetime(2024, 1, 1))
+    polygon = {"pixels": [(0, 0), (0, 1), (0, 2)]}
+
+    samples = sample_polygons(scene, polygon)
+
+    assert samples.rows[0]["sensor"] == "Sentinel-2"
+    assert samples.rows[0]["acquisition_time"] == datetime(2024, 1, 1)
+
+
+def test_sample_polygons_includes_none_provenance_when_unset() -> None:
+    scene = _grid_scene()
+    polygon = {"pixels": [(0, 0), (0, 1), (0, 2)]}
+
+    samples = sample_polygons(scene, polygon)
+
+    assert "sensor" in samples.rows[0]
+    assert "acquisition_time" in samples.rows[0]
+    assert samples.rows[0]["sensor"] is None
+    assert samples.rows[0]["acquisition_time"] is None
+
+
 def test_sample_polygons_rejects_unsupported_reducer() -> None:
     scene = _grid_scene()
 
@@ -125,6 +169,28 @@ def test_sample_transects_emits_one_row_per_vertex() -> None:
     assert [row["vertex_id"] for row in samples] == [0, 1, 2]
     assert all(row["transect_id"] == 0 for row in samples)
     assert samples.metadata["spacing"] == 10
+
+
+def test_sample_transects_includes_scene_provenance() -> None:
+    scene = _grid_scene(sensor="Sentinel-2", acquisition_time=datetime(2024, 1, 1))
+    transect = {"vertices": [(0, 0), (1, 1), (2, 2)]}
+
+    samples = sample_transects(scene, transect)
+
+    assert all(row["sensor"] == "Sentinel-2" for row in samples)
+    assert all(row["acquisition_time"] == datetime(2024, 1, 1) for row in samples)
+
+
+def test_sample_transects_includes_none_provenance_when_unset() -> None:
+    scene = _grid_scene()
+    transect = {"vertices": [(0, 0), (1, 1), (2, 2)]}
+
+    samples = sample_transects(scene, transect)
+
+    assert all("sensor" in row and row["sensor"] is None for row in samples)
+    assert all(
+        "acquisition_time" in row and row["acquisition_time"] is None for row in samples
+    )
 
 
 def test_sample_transects_requires_vertices_key() -> None:
