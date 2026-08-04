@@ -11,10 +11,12 @@ from earthrs.scene import Scene
 GlintProcessor = Any
 DepthProcessor = Any
 CloudProcessor = Any
+AtmosphericProcessor = Any
 
 _GLINT_REGISTRY: dict[str, GlintProcessor] = {}
 _DEPTH_REGISTRY: dict[str, DepthProcessor] = {}
 _CLOUD_REGISTRY: dict[str, CloudProcessor] = {}
+_ATMOSPHERIC_REGISTRY: dict[str, AtmosphericProcessor] = {}
 
 
 def register_glint_method(name: str, func: GlintProcessor) -> None:
@@ -27,6 +29,10 @@ def register_depth_method(name: str, func: DepthProcessor) -> None:
 
 def register_cloud_method(name: str, func: CloudProcessor) -> None:
     _CLOUD_REGISTRY[name.lower()] = func
+
+
+def register_atmospheric_method(name: str, func: AtmosphericProcessor) -> None:
+    _ATMOSPHERIC_REGISTRY[name.lower()] = func
 
 
 _RESAMPLING_METHODS = frozenset({"nearest", "bilinear"})

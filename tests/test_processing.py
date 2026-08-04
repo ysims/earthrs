@@ -41,6 +41,36 @@ def test_atmospheric_correction_is_deferred() -> None:
         atmospheric_correction(scene)
 
 
+def test_atmospheric_correction_default_method_is_deferred() -> None:
+    scene = Scene(data={"blue": [0.1]}, band_names=["blue"])
+
+    with pytest.raises(NotImplementedError):
+        atmospheric_correction(scene, method="default")
+
+
+def test_atmospheric_correction_rejects_unknown_method() -> None:
+    scene = Scene(data={"blue": [0.1]}, band_names=["blue"])
+
+    with pytest.raises(ValueError):
+        atmospheric_correction(scene, method="not_a_method")
+
+
+def test_register_atmospheric_method_round_trips_through_registry() -> None:
+    from earthrs.processing.core import _ATMOSPHERIC_REGISTRY, register_atmospheric_method
+
+    def _dummy_processor(scene: Scene, **kwargs: object) -> Scene:
+        return scene
+
+    register_atmospheric_method("Dummy", _dummy_processor)
+    try:
+        assert _ATMOSPHERIC_REGISTRY["dummy"] is _dummy_processor
+
+        scene = Scene(data={"blue": [0.1]}, band_names=["blue"])
+        assert atmospheric_correction(scene, method="DUMMY") is scene
+    finally:
+        del _ATMOSPHERIC_REGISTRY["dummy"]
+
+
 def test_hedley_glint_removal_subtracts_scaled_nir_and_clamps_at_zero() -> None:
     scene = Scene(data={"nir": [10, 20], "red": [5, 8]}, band_names=["nir", "red"])
 
