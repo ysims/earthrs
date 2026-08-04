@@ -9,6 +9,7 @@ from earthrs.processing.core import (
     _flatten_numeric,
     _linear_slope,
     _map_binary,
+    _resolve_glint_method,
     register_glint_method,
 )
 from earthrs.scene import Scene
@@ -17,10 +18,12 @@ from earthrs.scene import Scene
 def remove_glint(scene: Scene, *, method: str = "hedley", **kwargs: Any) -> Scene:
     """Remove surface sunglint from raster data.
 
-    Method names are resolved from the glint registry.
+    Method names are resolved from the glint registry. Passing ``method="auto"``
+    dispatches on ``scene.sensor`` via :func:`earthrs.processing.core._resolve_glint_method`.
     """
 
-    processor = _GLINT_REGISTRY.get(method.lower())
+    resolved = _resolve_glint_method(scene, method=method)
+    processor = _GLINT_REGISTRY.get(resolved)
     if processor is None:
         raise ValueError(f"Unknown glint-removal method '{method}'.")
     return processor(scene, **kwargs)

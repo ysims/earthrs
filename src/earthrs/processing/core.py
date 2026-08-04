@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from earthrs.scene import Scene
+from earthrs.sensors.catalog import Landsat, PlanetScope, Sentinel2, resolve_sensor
 
 GlintProcessor = Any
 DepthProcessor = Any
@@ -269,6 +270,63 @@ def _resolve_cloud_method(
     if probability is not None or scene.cloud_probability is not None:
         return "probability"
     return "user_mask"
+
+
+def _resolve_glint_method(scene: Scene, *, method: str) -> str:
+    """Resolve a glint-removal method name, dispatching on sensor when ``"auto"``.
+
+    When ``method`` is not ``"auto"`` it is lowercased and returned unchanged
+    (the existing, explicit-call behaviour). When ``method`` is ``"auto"``,
+    ``scene.sensor`` is resolved via :func:`earthrs.sensors.catalog.resolve_sensor`
+    so a sensor-appropriate method can be selected. Today the glint registry only
+    contains a single implemented method (``"hedley"``), so every sensor branch
+    -- including unknown/unresolved sensors -- currently resolves to the same
+    default; the sensor checks are kept in place so this function is
+    structurally ready to pick *different* methods per sensor once
+    sensor-specific glint-removal methods are registered.
+    """
+
+    selected = method.lower()
+    if selected != "auto":
+        return selected
+    catalog_entry = resolve_sensor(scene.sensor)
+    if isinstance(catalog_entry, Sentinel2):
+        return "hedley"
+    if isinstance(catalog_entry, Landsat):
+        return "hedley"
+    if isinstance(catalog_entry, PlanetScope):
+        return "hedley"
+    return "hedley"
+
+
+def _resolve_depth_method(scene: Scene, *, method: str) -> str:
+    """Resolve a depth-correction method name, dispatching on sensor when ``"auto"``.
+
+    When ``method`` is not ``"auto"`` it is lowercased and returned unchanged
+    (the existing, explicit-call behaviour). When ``method`` is ``"auto"``,
+    ``scene.sensor`` is resolved via :func:`earthrs.sensors.catalog.resolve_sensor`
+    so a sensor-appropriate method can be selected. Today's depth registry has one
+    implemented family of methods -- the Lyzenga variants
+    (``"lyzenga"``/``"lyzenga1978"``/``"lyzenga1981"``/``"lyzenga2006"``), plus
+    ``"stumpf"`` and ``"maritorena"`` -- with no sensor-specific variants yet, so
+    every sensor branch -- including unknown/unresolved sensors -- currently
+    resolves to the same default (``"lyzenga"``, the most recent/widely used
+    variant). The sensor checks are kept in place so this function is
+    structurally ready to pick *different* methods per sensor once
+    sensor-specific depth-correction methods are registered.
+    """
+
+    selected = method.lower()
+    if selected != "auto":
+        return selected
+    catalog_entry = resolve_sensor(scene.sensor)
+    if isinstance(catalog_entry, Sentinel2):
+        return "lyzenga"
+    if isinstance(catalog_entry, Landsat):
+        return "lyzenga"
+    if isinstance(catalog_entry, PlanetScope):
+        return "lyzenga"
+    return "lyzenga"
 
 
 def _resolve_data_band(scene: Scene, band_name: str) -> Any:

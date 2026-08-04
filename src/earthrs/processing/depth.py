@@ -10,6 +10,7 @@ from earthrs.processing.core import (
     _DEPTH_REGISTRY,
     _map_binary,
     _map_unary,
+    _resolve_depth_method,
     register_depth_method,
 )
 from earthrs.scene import Scene
@@ -30,9 +31,13 @@ def depth_correct(
     Lyzenga formulations, each denoted using the year of publication --
     ``"lyzenga1978"``, ``"lyzenga1981"``, ``"lyzenga2006"``. ``"lyzenga"`` is an
     alias for ``"lyzenga2006"``, the most recent and most widely used variant.
+
+    Passing ``method="auto"`` dispatches on ``scene.sensor`` via
+    :func:`earthrs.processing.core._resolve_depth_method`.
     """
 
-    processor = _DEPTH_REGISTRY.get(method.lower())
+    resolved = _resolve_depth_method(scene, method=method)
+    processor = _DEPTH_REGISTRY.get(resolved)
     if processor is None:
         raise ValueError(f"Unknown depth-correction method '{method}'.")
     return processor(scene, depth=depth, **kwargs)

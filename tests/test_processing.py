@@ -327,6 +327,64 @@ def test_cloud_mask_explicit_method_overrides_sensor_auto_resolution() -> None:
     assert result.cloud_mask == [True]
 
 
+@pytest.mark.parametrize(
+    "sensor",
+    ["Sentinel-2", "Sentinel-2A", "Landsat 8", "Landsat-9", "PlanetScope", None, "WorldView-3"],
+)
+def test_remove_glint_auto_resolves_without_raising_for_any_sensor(sensor) -> None:
+    scene = Scene(
+        data={"nir": [10, 20], "red": [5, 8]},
+        band_names=["nir", "red"],
+        sensor=sensor,
+    )
+
+    result = remove_glint(scene, method="auto")
+
+    assert result.history == ("remove_glint:hedley",)
+
+
+@pytest.mark.parametrize(
+    "sensor",
+    ["Sentinel-2", "Sentinel-2A", "Landsat 8", "Landsat-9", "PlanetScope", None, "WorldView-3"],
+)
+def test_depth_correct_auto_resolves_without_raising_for_any_sensor(sensor) -> None:
+    scene = Scene(
+        data={"blue": [math.e], "green": [math.e**2]},
+        band_names=["blue", "green"],
+        sensor=sensor,
+    )
+
+    result = depth_correct(
+        scene, method="auto", coefficients={"blue": 1.0, "green": 0.5}, intercept=10.0
+    )
+
+    assert result.metadata["depth_method"] == "lyzenga2006"
+    assert result.history == ("depth_correct:lyzenga2006",)
+
+
+def test_remove_glint_explicit_method_overrides_sensor_auto_resolution() -> None:
+    scene = Scene(
+        data={"nir": [1], "red": [1]},
+        band_names=["nir", "red"],
+        sensor="Sentinel-2",
+    )
+
+    with pytest.raises(ValueError):
+        remove_glint(scene, method="not_a_method")
+
+
+def test_depth_correct_explicit_method_overrides_sensor_auto_resolution() -> None:
+    scene = Scene(
+        data={"blue": [math.e], "green": [math.e**2]},
+        band_names=["blue", "green"],
+        sensor="Landsat 8",
+    )
+
+    result = depth_correct(scene, method="lyzenga1981", k_i=3.0, k_j=4.0)
+
+    assert result.metadata["depth_method"] == "lyzenga1981"
+
+
 def test_reproject_requires_scene_transform() -> None:
     scene = Scene(data={"nir": [[1, 2], [3, 4]]}, band_names=["nir"])
 
