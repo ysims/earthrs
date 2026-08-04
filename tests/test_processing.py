@@ -187,10 +187,49 @@ def test_stumpf_depth_correction_adds_derived_band() -> None:
 
     result = depth_correct(scene, method="stumpf")
 
-    expected = 0.0 - 1.0 * (math.log(0.1) / math.log(0.2))
+    n = 1000.0
+    expected = 1.0 * (math.log(n * 0.1) / math.log(n * 0.2)) - 0.0
     assert result.data["stumpf_depth"] == pytest.approx([expected])
     assert "stumpf_depth" in result.band_names
     assert result.metadata["depth_method"] == "stumpf"
+
+
+def test_stumpf_depth_matches_hand_computed_values() -> None:
+    # Choose blue/green so that n * Rw is exactly e and e**2 respectively, giving
+    # ln(n * blue) == 1 and ln(n * green) == 2, i.e. a ratio of exactly 0.5.
+    n = 1000.0
+    scene = Scene(
+        data={"blue": [math.e / n], "green": [math.e**2 / n]},
+        band_names=["blue", "green"],
+    )
+
+    default_result = depth_correct(scene, method="stumpf")
+    assert default_result.data["stumpf_depth"] == pytest.approx([0.5])
+
+    tuned_result = depth_correct(scene, method="stumpf", m0=1.0, m1=2.0)
+    assert tuned_result.data["stumpf_depth"] == pytest.approx([0.0])
+
+
+def test_stumpf_depth_ratio_increases_with_relative_blue_reflectance() -> None:
+    # Deeper water attenuates the longer green wavelength more than blue, so the
+    # blue/green ratio -- and hence the Stumpf depth estimate -- should increase
+    # as green reflectance drops relative to blue (eq. 1's sign convention).
+    shallow = Scene(data={"blue": [0.05], "green": [0.05]}, band_names=["blue", "green"])
+    deep = Scene(data={"blue": [0.05], "green": [0.01]}, band_names=["blue", "green"])
+
+    shallow_depth = depth_correct(shallow, method="stumpf").data["stumpf_depth"][0]
+    deep_depth = depth_correct(deep, method="stumpf").data["stumpf_depth"][0]
+
+    assert deep_depth > shallow_depth
+
+
+def test_stumpf_depth_accepts_custom_scaling_constant() -> None:
+    scene = Scene(data={"blue": [0.1], "green": [0.2]}, band_names=["blue", "green"])
+
+    result = depth_correct(scene, method="stumpf", n=500.0)
+
+    expected = 1.0 * (math.log(500.0 * 0.1) / math.log(500.0 * 0.2)) - 0.0
+    assert result.data["stumpf_depth"] == pytest.approx([expected])
 
 
 def test_maritorena_depth_correction_requires_depth() -> None:
@@ -200,13 +239,62 @@ def test_maritorena_depth_correction_requires_depth() -> None:
         depth_correct(scene, method="maritorena")
 
 
-def test_maritorena_depth_correction_applies_exponential_attenuation() -> None:
-    scene = Scene(data={"blue": [1.0]}, band_names=["blue"])
+def test_maritorena_depth_correction_recovers_bottom_reflectance_round_trip() -> None:
+    # Run the forward Maritorena, Morel & Gentili (1994) model by hand to derive a
+    # synthetic measured Rw at a known depth, then check the correction inverts it
+    # back to the original bottom reflectance Rb.
+    rb = 0.18
+    rw_inf = 0.02
+    k_d = 0.15
+    depth = 3.5
+    measured_rw = rw_inf + (rb - rw_inf) * math.exp(-2.0 * k_d * depth)
 
-    result = depth_correct(scene, method="maritorena", depth=[2.0], attenuation=0.1)
+    scene = Scene(data={"blue": [measured_rw]}, band_names=["blue"])
+    result = depth_correct(
+        scene,
+        method="maritorena",
+        depth=[depth],
+        deep_water_reflectance=rw_inf,
+        attenuation=k_d,
+    )
 
-    assert result.data["blue"] == pytest.approx([math.exp(0.2)])
+    assert result.data["blue"] == pytest.approx([rb])
     assert result.metadata["depth_method"] == "maritorena"
+    assert result.history == ("depth_correct:maritorena",)
+
+
+def test_maritorena_depth_correction_zero_depth_recovers_reflectance_exactly() -> None:
+    scene = Scene(data={"blue": [0.42]}, band_names=["blue"])
+
+    result = depth_correct(
+        scene, method="maritorena", depth=[0.0], deep_water_reflectance=0.05, attenuation=0.2
+    )
+
+    assert result.data["blue"] == pytest.approx([0.42])
+
+
+def test_maritorena_depth_correction_supports_per_band_parameters() -> None:
+    rb_blue, rb_green = 0.2, 0.1
+    rw_inf = {"blue": 0.03, "green": 0.05}
+    k_d = {"blue": 0.1, "green": 0.2}
+    depth = 4.0
+    measured_blue = rw_inf["blue"] + (rb_blue - rw_inf["blue"]) * math.exp(
+        -2.0 * k_d["blue"] * depth
+    )
+    measured_green = rw_inf["green"] + (rb_green - rw_inf["green"]) * math.exp(
+        -2.0 * k_d["green"] * depth
+    )
+
+    scene = Scene(
+        data={"blue": [measured_blue], "green": [measured_green]},
+        band_names=["blue", "green"],
+    )
+    result = depth_correct(
+        scene, method="maritorena", depth=[depth], deep_water_reflectance=rw_inf, attenuation=k_d
+    )
+
+    assert result.data["blue"] == pytest.approx([rb_blue])
+    assert result.data["green"] == pytest.approx([rb_green])
 
 
 def test_sentinel2_qa60_cloud_mask_checks_bits_10_and_11() -> None:
