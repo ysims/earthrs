@@ -36,6 +36,45 @@ regardless of which field an importer populated, `scene.cloud_mask`, `scene.clou
 (cloud masking, cloud filtering) read from this normalised schema rather than product-specific
 field names.
 
+## `Scene.data` backing stores
+
+`earthrs` has zero *required* runtime dependencies — `Scene.data` as a `dict[str, list]` mapping
+band names to nested lists (or any list-of-lists-like structure) is the always-available default
+and is what every test in this project exercises:
+
+```python
+from earthrs import Scene
+
+scene = Scene(data={"nir": [[0.8, 0.4]], "red": [[0.2, 0.4]]}, band_names=["nir", "red"])
+```
+
+`earthrs.indices` and `earthrs.sampling` additionally recognise two optional, geospatial-ecosystem
+backing stores, guarded behind `try`/`except ImportError` so importing `earthrs` never requires
+either package:
+
+- **`xarray.DataArray`** — must have a `band` dimension whose coordinate values are the band
+  names, in the same order as `scene.band_names`. Band access is `data.sel(band=band_name)`.
+- **`xarray.Dataset`** — one data variable per band; band access is `data[band_name]`, which
+  returns a 2D `DataArray`.
+- **A rasterio dataset handle** — anything exposing `.read(band_index)` with 1-indexed band
+  numbers (for example an open `rasterio.io.DatasetReader`). Band names map to rasterio band
+  indices positionally: `scene.band_names[i]` corresponds to rasterio band `i + 1`.
+
+Passing anything else raises a `TypeError` with a message listing the supported shapes.
+
+Install optional support for the xarray/rasterio-backed paths with:
+
+```bash
+pip install "earthrs[geo]"
+```
+
+This is a deliberate project-wide policy: xarray, rasterio, and similar packages are optional
+integrations that *improve* behaviour (native array types, richer metadata, lazy/on-disk reads)
+without ever being required — the zero-dependency `dict`-of-list path keeps working identically
+whether or not the `geo` extra is installed. See [Project status](status.md) for known
+limitations of the xarray/rasterio paths (for example, dimension-ordering conventions that are
+not yet recognised).
+
 ## Spectral indices
 
 `earthrs.indices` provides `ndvi`, `ndwi`, and `evi`, each taking a `Scene` and returning

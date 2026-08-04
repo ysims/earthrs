@@ -6,11 +6,18 @@ scaffolded but not yet built — see [Getting started](getting-started.md) and
 
 ## Known limitations
 
-- Sampling (`earthrs.sampling`) and spectral indices (`earthrs.indices`) currently only support
-  `Scene.data` as a mapping of band name to nested list/array data, not the xarray/rasterio-backed
-  data the `Scene` docstring describes as the typical case.
+- Sampling (`earthrs.sampling`) and spectral indices (`earthrs.indices`) support `Scene.data` as
+  a `dict[str, list]` of band name to nested list data (the always-available, zero-dependency
+  default), an `xarray.DataArray`/`Dataset`, or a rasterio dataset handle — see
+  [Core concepts](concepts.md#scenedata-backing-stores) for the exact conventions and how to
+  install optional support.
+- `xarray.DataArray` scene data must use a `band` dimension whose coordinate values match
+  `scene.band_names`; other dimension-ordering or naming conventions (for example a `variable`
+  dimension, or bands stored as separate leading axes without coordinates) are not recognised
+  and raise `TypeError`.
 - Spectral indices treat only Python `None` as a missing value; there is no nodata/fill-value
-  (for example `-9999`) handling yet.
+  (for example `-9999`) handling yet. This applies uniformly across dict, xarray, and rasterio
+  backed data — no backend currently reads a dataset's own nodata value.
 
 ## Scaffolded, not yet implemented
 
